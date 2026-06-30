@@ -165,12 +165,18 @@ static void apcie_irq_msi_compose_msg(struct irq_data *data,
 				       struct msi_msg *msg)
 {
 	struct irq_cfg *cfg __maybe_unused = irqd_cfg(data);
+	static atomic_t msi_cpu_counter = ATOMIC_INIT(0);
+	int cpu;
 
 	memset(msg, 0, sizeof(*msg));
 	msg->address_hi = X86_MSI_BASE_ADDRESS_HIGH;
-	msg->address_lo = 0xfee00000;// Just do it like this for now
 
-	// I know this is absolute horseshit, but it matches a known working kernel
+	/* Distribute interrupts across CPUs using round-robin.
+	 * Each CPU's Local APIC is at 0xfee00000 | (cpu << 12).
+	 * This prevents all Aeolia interrupts from piling up on CPU1. */
+	cpu = atomic_inc_return(&msi_cpu_counter) % num_online_cpus();
+	msg->address_lo = 0xfee00000 | (cpu << 12);
+
 	{
 		struct apcie_dev *sc = data->chip_data;
 		int i;
@@ -184,8 +190,6 @@ static void apcie_irq_msi_compose_msg(struct irq_data *data,
 			}
 		}
 	}
-
-	pr_err("apcie_irq_msi_compose_msg\n");
 }
 
 static struct irq_chip apcie_msi_controller = {

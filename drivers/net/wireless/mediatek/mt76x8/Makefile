@@ -27,3 +27,4 @@ driver_clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 
 endif
+EXTRA_CFLAGS += -Wno-error=stringop-overflow -Wno-error=stringop-overread
