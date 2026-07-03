@@ -8264,7 +8264,18 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
 	 */
 	switch (connector_type) {
 	case DRM_MODE_CONNECTOR_HDMIA:
-		aconnector->base.polled = DRM_CONNECTOR_POLL_HPD;
+		/*
+		 * Force software connector polling for PS4 Liverpool/Aeolia.
+		 * The Aeolia southbridge does not route HPD (Hot Plug Detect)
+		 * interrupts to the amdgpu driver, so DRM_CONNECTOR_POLL_HPD
+		 * alone causes the poll worker to skip this connector entirely.
+		 * Using POLL_CONNECT|POLL_DISCONNECT forces the DRM poll worker
+		 * to actively re-probe the connector every 10 seconds via DDC/I2C,
+		 * which detects TV power-cycles and triggers automatic link
+		 * retraining.
+		 */
+		aconnector->base.polled = DRM_CONNECTOR_POLL_CONNECT |
+					  DRM_CONNECTOR_POLL_DISCONNECT;
 		aconnector->base.ycbcr_420_allowed =
 			link->link_enc->features.hdmi_ycbcr420_supported ? true : false;
 		break;
