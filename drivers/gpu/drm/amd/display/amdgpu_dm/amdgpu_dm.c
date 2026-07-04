@@ -6922,6 +6922,8 @@ amdgpu_dm_connector_detect(struct drm_connector *connector, bool force)
 {
 	bool connected;
 	struct amdgpu_dm_connector *aconnector = to_amdgpu_dm_connector(connector);
+	struct amdgpu_device *adev = drm_to_adev(connector->dev);
+	bool ret;
 
 	/*
 	 * Notes:
@@ -6931,11 +6933,33 @@ amdgpu_dm_connector_detect(struct drm_connector *connector, bool force)
 	 */
 
 	if (aconnector->base.force == DRM_FORCE_UNSPECIFIED &&
-	    !aconnector->fake_enable)
+	    !aconnector->fake_enable) {
+		/*
+		 * PS4 Aeolia: Force link re-detection on every poll cycle.
+		 * The Aeolia southbridge does not route HPD interrupts, so the
+		 * connector status never updates via the normal HPD path.
+		 * Without this, dc_sink is set once at boot and never cleared,
+		 * causing the poll worker to always see "connected" even when
+		 * the TV is powered off.
+		 *
+		 * dc_link_detect() re-probes the DDC bus. If the TV is
+		 * powered off, DDC fails and dc_sink is set to NULL. When the
+		 * TV powers back on, the next poll detects it and fires a
+		 * hotplug event, triggering automatic link retraining.
+		 */
+		if (aconnector->dc_link && mutex_trylock(&adev->dm.dc_lock)) {
+			ret = dc_link_detect(aconnector->dc_link,
+					     DETECT_REASON_HPD);
+			if (ret)
+				amdgpu_dm_update_connector_after_detect(
+					aconnector);
+			mutex_unlock(&adev->dm.dc_lock);
+		}
 		connected = (aconnector->dc_sink != NULL);
-	else
+	} else {
 		connected = (aconnector->base.force == DRM_FORCE_ON ||
 				aconnector->base.force == DRM_FORCE_ON_DIGITAL);
+	}
 
 	update_subconnector_property(aconnector);
 
