@@ -3072,6 +3072,16 @@ static irqreturn_t sky2_intr(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
+	/*
+	 * PS4 Aeolia interrupt coalescing: Rate-limit NAPI scheduling to
+	 * prevent the eth0 interrupt storm (~3600 spurious interrupts/sec)
+	 * from starving emulation CPUs. Without this, ksoftirqd consumes
+	 * 100% of one CPU core processing phantom network interrupts.
+	 */
+	if (time_before(jiffies, hw->last_intr_jiffies + 2))
+		return IRQ_HANDLED;
+	hw->last_intr_jiffies = jiffies;
+
 	prefetch(&hw->st_le[hw->st_idx]);
 
 	napi_schedule(&hw->napi);

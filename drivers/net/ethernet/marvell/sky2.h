@@ -2305,6 +2305,9 @@ struct sky2_hw {
 	struct work_struct   restart_work;
 	wait_queue_head_t    msi_wait;
 
+	/* PS4 Aeolia interrupt coalescing */
+	unsigned long	     last_intr_jiffies;
+
 	u8		     phy_addr;
 	char		     irq_name[];
 };
