@@ -3077,8 +3077,10 @@ static irqreturn_t sky2_intr(int irq, void *dev_id)
 	 * prevent the eth0 interrupt storm (~3600 spurious interrupts/sec)
 	 * from starving emulation CPUs. Without this, ksoftirqd consumes
 	 * 100% of one CPU core processing phantom network interrupts.
+	 * 10 jiffies (~10ms on HZ=1000) balances network throughput with
+	 * emulation performance.
 	 */
-	if (time_before(jiffies, hw->last_intr_jiffies + 2))
+	if (time_before(jiffies, hw->last_intr_jiffies + 10))
 		return IRQ_HANDLED;
 	hw->last_intr_jiffies = jiffies;
 
