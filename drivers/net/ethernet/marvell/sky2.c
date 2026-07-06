@@ -3080,7 +3080,7 @@ static irqreturn_t sky2_intr(int irq, void *dev_id)
 	 * 10 jiffies (~10ms on HZ=1000) balances network throughput with
 	 * emulation performance.
 	 */
-	if (time_before(jiffies, hw->last_intr_jiffies + 10))
+	if (time_before(jiffies, hw->last_intr_jiffies + 100))
 		return IRQ_HANDLED;
 	hw->last_intr_jiffies = jiffies;
 
